@@ -1,0 +1,3 @@
+/home/tanya/Cours/Projet/Voronoi_delaunay/build/CMakeFiles/VoronoiApp.dir
+/home/tanya/Cours/Projet/Voronoi_delaunay/build/CMakeFiles/edit_cache.dir
+/home/tanya/Cours/Projet/Voronoi_delaunay/build/CMakeFiles/rebuild_cache.dir
