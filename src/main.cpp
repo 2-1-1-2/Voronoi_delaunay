@@ -172,73 +172,74 @@ void delaunay(Application &app) {
     /* --- --- */
     /* --- --- */
   }
+}
 
-  void construitVoronoi(Application & app) { delaunay(app); }
+void construitVoronoi(Application &app) { delaunay(app); }
 
-  bool handleEvent(Application & app) {
-    /* Remplissez cette fonction pour gérer les inputs utilisateurs */
-    SDL_Event e;
-    while (SDL_PollEvent(&e)) {
-      if (e.type == SDL_QUIT)
-        return false;
-      else if (e.type == SDL_WINDOWEVENT_RESIZED) {
-        app.width = e.window.data1;
-        app.height = e.window.data1;
-      } else if (e.type == SDL_MOUSEWHEEL) {
-      } else if (e.type == SDL_MOUSEBUTTONUP) {
-        if (e.button.button == SDL_BUTTON_RIGHT) {
-          app.focus.x = e.button.x;
-          app.focus.y = e.button.y;
-          app.points.clear();
-        } else if (e.button.button == SDL_BUTTON_LEFT) {
-          app.focus.y = 0;
-          app.points.push_back(Coords{e.button.x, e.button.y});
-          construitVoronoi(app);
-        }
+bool handleEvent(Application &app) {
+  /* Remplissez cette fonction pour gérer les inputs utilisateurs */
+  SDL_Event e;
+  while (SDL_PollEvent(&e)) {
+    if (e.type == SDL_QUIT)
+      return false;
+    else if (e.type == SDL_WINDOWEVENT_RESIZED) {
+      app.width = e.window.data1;
+      app.height = e.window.data1;
+    } else if (e.type == SDL_MOUSEWHEEL) {
+    } else if (e.type == SDL_MOUSEBUTTONUP) {
+      if (e.button.button == SDL_BUTTON_RIGHT) {
+        app.focus.x = e.button.x;
+        app.focus.y = e.button.y;
+        app.points.clear();
+      } else if (e.button.button == SDL_BUTTON_LEFT) {
+        app.focus.y = 0;
+        app.points.push_back(Coords{e.button.x, e.button.y});
+        construitVoronoi(app);
       }
     }
-    return true;
+  }
+  return true;
+}
+
+int main(int argc, char **argv) {
+  SDL_Window *gWindow;
+  SDL_Renderer *renderer;
+  Application app{720, 720, Coords{0, 0}};
+  bool is_running = true;
+
+  // Creation de la fenetre
+  gWindow = init("Awesome Voronoi", 720, 720);
+
+  if (!gWindow) {
+    SDL_Log("Failed to initialize!\n");
+    exit(1);
   }
 
-  int main(int argc, char **argv) {
-    SDL_Window *gWindow;
-    SDL_Renderer *renderer;
-    Application app{720, 720, Coords{0, 0}};
-    bool is_running = true;
+  renderer = SDL_CreateRenderer(gWindow, -1, 0); // SDL_RENDERER_PRESENTVSYNC
 
-    // Creation de la fenetre
-    gWindow = init("Awesome Voronoi", 720, 720);
+  /*  GAME LOOP  */
+  while (true) {
+    // INPUTS
+    is_running = handleEvent(app);
+    if (!is_running)
+      break;
 
-    if (!gWindow) {
-      SDL_Log("Failed to initialize!\n");
-      exit(1);
-    }
+    // EFFACAGE FRAME
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
 
-    renderer = SDL_CreateRenderer(gWindow, -1, 0); // SDL_RENDERER_PRESENTVSYNC
+    // DESSIN
+    draw(renderer, app);
 
-    /*  GAME LOOP  */
-    while (true) {
-      // INPUTS
-      is_running = handleEvent(app);
-      if (!is_running)
-        break;
+    // VALIDATION FRAME
+    SDL_RenderPresent(renderer);
 
-      // EFFACAGE FRAME
-      SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-      SDL_RenderClear(renderer);
-
-      // DESSIN
-      draw(renderer, app);
-
-      // VALIDATION FRAME
-      SDL_RenderPresent(renderer);
-
-      // PAUSE en ms
-      SDL_Delay(1000 / 30);
-    }
-
-    // Free resources and close SDL
-    close(gWindow, renderer);
-
-    return 0;
+    // PAUSE en ms
+    SDL_Delay(1000 / 30);
   }
+
+  // Free resources and close SDL
+  close(gWindow, renderer);
+
+  return 0;
+}
