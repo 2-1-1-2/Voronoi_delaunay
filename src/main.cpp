@@ -6,6 +6,7 @@
 #include <map>
 #include <queue>
 #include <vector>
+#include <random>
 
 using namespace std;
 
@@ -29,6 +30,23 @@ struct Triangle
   bool complet = false;
 };
 
+struct GodHaveMercy
+{
+  Triangle t;
+  Coords center;
+};
+
+struct Vertex
+{
+  Coords point;
+  double angle;
+
+  bool operator<(const Vertex& other) const
+  {
+    return angle < other.angle;
+  }
+};
+
 struct Application 
 {
   int width, height;
@@ -36,6 +54,8 @@ struct Application
 
   std::vector<Coords> points;
   std::vector<Triangle> triangles;
+  std::vector<GodHaveMercy> snif;
+  std::vector<std::vector<Coords>> polygons;
 };
 
 // changement => trie par x
@@ -46,6 +66,16 @@ bool compareCoords(Coords point1, Coords point2)
     return point1.y < point2.y;
 
   return point1.x < point2.x;
+}
+
+// changement => trie par x
+bool compareCoordsReverse(Coords point1, Coords point2) 
+{
+  // Si les points x sont égaux, alors on les distingue selon leur point y
+  if (point1.x == point2.x)
+    return point1.y < point2.y;
+
+  return point1.x > point2.x;
 }
 
 /*
@@ -157,6 +187,62 @@ void drawCenterCircles(SDL_Renderer *renderer,
   }
 }
 
+/*void drawPolygons(SDL_Renderer* renderer, const std::vector<std::vector<Coords>>& polygons)
+{
+  // Couleur des polygones
+  SDL_Color color = {255, 0, 0, 255}; // Rouge
+
+  // Dessin des polygones
+  for (const std::vector<Coords>& polygon : polygons)
+  {
+    // Conversion des coordonnées en tableaux SDL_gfx
+    std::vector<Sint16> xPoints(polygon.size());
+    std::vector<Sint16> yPoints(polygon.size());
+
+    for (std::size_t i = 0; i < polygon.size(); i++)
+    {
+      xPoints[i] = static_cast<Sint16>(polygon[i].x);
+      yPoints[i] = static_cast<Sint16>(polygon[i].y);
+    }
+
+    // Dessin du polygone
+    polygonRGBA(renderer, xPoints.data(), yPoints.data(), polygon.size(),
+                color.r, color.g, color.b, color.a);
+  }
+}*/
+
+void drawPolygons(SDL_Renderer* renderer, const std::vector<std::vector<Coords>>& polygons)
+{
+  // Générateur de nombres aléatoires pour les couleurs
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<int> dis(0, 255);
+
+  // Dessin des polygones
+  for (const std::vector<Coords>& polygon : polygons)
+  {
+    // Génération d'une couleur aléatoire
+    Uint8 r = dis(gen);
+    Uint8 g = dis(gen);
+    Uint8 b = dis(gen);
+    Uint8 a = 255; // Opacité maximale
+
+    // Conversion des coordonnées en tableaux SDL_gfx
+    std::vector<Sint16> xPoints(polygon.size());
+    std::vector<Sint16> yPoints(polygon.size());
+
+    for (std::size_t i = 0; i < polygon.size(); i++)
+    {
+      xPoints[i] = static_cast<Sint16>(polygon[i].x);
+      yPoints[i] = static_cast<Sint16>(polygon[i].y);
+    }
+
+    // Dessin du polygone rempli avec la couleur aléatoire
+    filledPolygonRGBA(renderer, xPoints.data(), yPoints.data(), polygon.size(),
+                      r, g, b, a);
+  }
+}
+
 /* ********** D  R  A  W  ********** */
 
 void draw(SDL_Renderer *renderer, const Application &app) 
@@ -172,6 +258,8 @@ void draw(SDL_Renderer *renderer, const Application &app)
   //dessiner les cercles circonscrits
   drawCircles(renderer, app.triangles);
   drawCenterCircles(renderer, app.triangles);
+  // Dessinez les polygones
+  drawPolygons(renderer, app.polygons);
 }
 
 /* ICI - ESPACE TRAVAIL*/
@@ -270,7 +358,106 @@ void delaunay(Application &app)
   }
 }
 
-void construitVoronoi(Application &app) { delaunay(app); }
+void construitVoronoi(Application &app) 
+{ 
+  delaunay(app);
+
+  // Vider la liste existante de snif
+  app.snif.clear();
+
+  // Vider la liste existante de polygones
+  app.polygons.clear();
+
+  // On récupère les centres des cercles de chaque triangle
+  float xC, yC, rC;
+  // on parcourt tous les triangles
+   cout << "TAILLE TRIANGLE: " << app.triangles.size() << endl;
+  for (std::size_t i = 0; i < app.triangles.size(); i++) 
+  {
+    const Triangle &t = app.triangles[i];
+    CircumCircle(t.p1.x, t.p1.y, t.p1.x, t.p1.y, t.p2.x, t.p2.y, t.p3.x, t.p3.y,
+                   &xC, &yC, &rC);
+    if((xC >= 0 && xC <=720) && (yC >= 0 && yC <= 720))
+      app.snif.push_back({t, {xC, yC}});
+  }
+
+  cout << "TAILLE SNIF: " << app.snif.size() << endl;
+
+  // On parcourt chaque point
+  for (auto i = app.points.begin(); i < app.points.end(); i++) 
+  {
+    cout << "TAILLE POINTS: " << app.points.size() << endl;
+    Coords _pt = *i;
+    std::vector<Coords> polygon;
+    // on parcourt chaque snif pour voir les triangles qui ont un point commun avec ce point
+    for (auto j = app.snif.begin(); j < app.snif.end(); j++) 
+    {
+      GodHaveMercy _snif = *j;
+      // Si un des points du triangle est le même que le point qu'on parcoure
+      if(_pt == _snif.t.p1 || _pt == _snif.t.p2 || _pt == _snif.t.p3)
+      {
+        // alors le polygon est constitué de son centre de cercle
+        polygon.push_back({_snif.center});
+      }
+    }
+
+    // S'il y a assez de points pour faire un polygone
+    if(polygon.size() >= 3)
+    {
+      std::vector<Coords> verifPolygon;
+      std::vector<Coords> bottomPolygon;
+      /* --- Trier les points DE TES MORTS DE GAUCHE A DROITE--- */
+      std::sort(polygon.begin(), polygon.end(), compareCoords);
+
+      Coords pointReference = polygon[0];
+      verifPolygon.push_back(pointReference);
+
+      int nbrPoints = 1;
+      int bottomPoints = 0;
+
+      for(size_t i = 1; i < polygon.size(); i++)
+      {
+        // Si le point se trouve au_dessus du point de référence
+        if(polygon[i].y <= pointReference.y)
+        {
+          verifPolygon.push_back(polygon[i]);
+          nbrPoints++;
+        }
+        else
+        {
+          bottomPolygon.push_back(polygon[i]);
+          bottomPoints++;
+        }
+      }
+
+      if(nbrPoints < polygon.size())
+      {
+        std::sort(bottomPolygon.begin(), bottomPolygon.end(), compareCoordsReverse);
+        size_t i = 0;
+
+        while(nbrPoints < polygon.size())
+        {
+          verifPolygon.push_back(bottomPolygon[i]);
+          nbrPoints++;
+          i++;
+        }
+      }
+
+      app.polygons.push_back(verifPolygon);
+    }
+  }
+
+  // Affichage des polygones
+  for (const vector<Coords> &polygon : app.polygons) 
+  {
+    cout << "Polygone :" << endl;
+    for (const Coords &point : polygon) 
+    {
+      cout << "(" << point.x << ", " << point.y << ")" << endl;
+    }
+    cout << endl;
+  }
+}
 
 bool handleEvent(Application &app) 
 {
@@ -312,11 +499,11 @@ int main(int argc, char **argv)
 {
   SDL_Window *gWindow;
   SDL_Renderer *renderer;
-  Application app{1920, 1080, Coords{0, 0}};
+  Application app{720, 720, Coords{0, 0}};
   bool is_running = true;
 
   // Creation de la fenetre
-  gWindow = init("Awesome Voronoi", 1920, 1080);
+  gWindow = init("Awesome Voronoi", 720, 720);
 
   if (!gWindow) 
   {
