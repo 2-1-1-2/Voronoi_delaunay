@@ -21,17 +21,6 @@ struct Coords
 struct Segment 
 {
   Coords p1, p2;
-
-  bool operator==(const Segment &other) const
-  {
-    return ((p1 == other.p1 && p2 == other.p2) ||
-            (p1 == other.p2 && p2 == other.p1));
-  }
-
-  bool operator!=(const Segment& other) const 
-  {
-      return !(*this == other);
-  }
 };
 
 struct Triangle 
@@ -55,45 +44,8 @@ bool compareCoords(Coords point1, Coords point2)
   // Si les points x sont égaux, alors on les distingue selon leur point y
   if (point1.x == point2.x)
     return point1.y < point2.y;
+
   return point1.x < point2.x;
-}
-
-void drawPoints(SDL_Renderer *renderer, const std::vector<Coords> &points) 
-{
-  for (std::size_t i = 0; i < points.size(); i++) {
-    filledCircleRGBA(renderer, points[i].x, points[i].y, 3, 240, 240, 23,
-                     SDL_ALPHA_OPAQUE);
-  }
-}
-
-void drawSegments(SDL_Renderer *renderer,
-                  const std::vector<Segment> &segments) 
-{
-  for (std::size_t i = 0; i < segments.size(); i++) {
-    lineRGBA(renderer, segments[i].p1.x, segments[i].p1.y, segments[i].p2.x,
-             segments[i].p2.y, 240, 240, 20, SDL_ALPHA_OPAQUE);
-  }
-}
-
-void drawTriangles(SDL_Renderer *renderer,
-                   const std::vector<Triangle> &triangles) 
-{
-  for (std::size_t i = 0; i < triangles.size(); i++) {
-    const Triangle &t = triangles[i];
-    trigonRGBA(renderer, t.p1.x, t.p1.y, t.p2.x, t.p2.y, t.p3.x, t.p3.y, 0, 240,
-               160, SDL_ALPHA_OPAQUE);
-  }
-}
-
-/* ********** D  R  A  W  ********** */
-
-void draw(SDL_Renderer *renderer, const Application &app) {
-  /* Remplissez cette fonction pour faire l'affichage du jeu */
-  int width, height;
-  SDL_GetRendererOutputSize(renderer, &width, &height);
-
-  drawPoints(renderer, app.points);
-  drawTriangles(renderer, app.triangles);
 }
 
 /*
@@ -148,6 +100,78 @@ bool CircumCircle(float pX, float pY, float x1, float y1, float x2, float y2,
   drsqr = dx * dx + dy * dy;
 
   return ((drsqr - *rsqr) <= EPSILON ? true : false);
+}
+
+void drawPoints(SDL_Renderer *renderer, const std::vector<Coords> &points) 
+{
+  for (std::size_t i = 0; i < points.size(); i++) 
+  {
+    filledCircleRGBA(renderer, points[i].x, points[i].y, 3, 240, 240, 23,
+                     SDL_ALPHA_OPAQUE);
+  }
+}
+
+void drawSegments(SDL_Renderer *renderer,
+                  const std::vector<Segment> &segments) 
+{
+  for (std::size_t i = 0; i < segments.size(); i++) 
+  {
+    lineRGBA(renderer, segments[i].p1.x, segments[i].p1.y, segments[i].p2.x,
+             segments[i].p2.y, 240, 240, 20, SDL_ALPHA_OPAQUE);
+  }
+}
+
+void drawTriangles(SDL_Renderer *renderer,
+                   const std::vector<Triangle> &triangles) 
+{
+  for (std::size_t i = 0; i < triangles.size(); i++) {
+    const Triangle &t = triangles[i];
+    trigonRGBA(renderer, t.p1.x, t.p1.y, t.p2.x, t.p2.y, t.p3.x, t.p3.y, 0, 240,
+               160, SDL_ALPHA_OPAQUE);
+  }
+}
+
+void drawCircles(SDL_Renderer *renderer,
+                   const std::vector<Triangle> &triangles) 
+{
+  float xC, yC, rC;
+  for (std::size_t i = 0; i < triangles.size(); i++) 
+  {
+    const Triangle &t = triangles[i];
+    CircumCircle(t.p1.x, t.p1.y, t.p1.x, t.p1.y, t.p2.x, t.p2.y, t.p3.x, t.p3.y,
+                   &xC, &yC, &rC);
+    circleRGBA(renderer, xC, yC, sqrt(rC), 30, 30, 30, SDL_ALPHA_OPAQUE);
+  }
+}
+
+void drawCenterCircles(SDL_Renderer *renderer,
+                   const std::vector<Triangle> &triangles) 
+{
+  float xC, yC, rC;
+  for (std::size_t i = 0; i < triangles.size(); i++) 
+  {
+    const Triangle &t = triangles[i];
+    CircumCircle(t.p1.x, t.p1.y, t.p1.x, t.p1.y, t.p2.x, t.p2.y, t.p3.x, t.p3.y,
+                   &xC, &yC, &rC);
+    filledCircleRGBA(renderer, xC, yC, 3, 240, 23, 23, SDL_ALPHA_OPAQUE);
+  }
+}
+
+/* ********** D  R  A  W  ********** */
+
+void draw(SDL_Renderer *renderer, const Application &app) 
+{
+  /* Remplissez cette fonction pour faire l'affichage du jeu */
+  int width, height;
+  SDL_GetRendererOutputSize(renderer, &width, &height);
+
+  drawPoints(renderer, app.points);
+  drawTriangles(renderer, app.triangles);
+
+  // Pour dessiner le centre des cercles
+  //dessiner les cercles circonscrits
+  drawCircles(renderer, app.triangles);
+  drawCenterCircles(renderer, app.triangles);
 }
 
 /* ICI - ESPACE TRAVAIL*/
@@ -231,13 +255,9 @@ void delaunay(Application &app)
       }
 
       if (erase_s1)
-      {
         _s1 = segments.erase(_s1);
-      }
       else
-      {
         ++_s1;
-      }
     }
 
 
