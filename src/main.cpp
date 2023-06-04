@@ -303,8 +303,7 @@ void construitVoronoi(Application &app) {
     //* --- pour Pour chaque segment S de la liste LS faire --- */
     for (auto segment : segments) {
       // créer un nouveau triangle composé du segment S et du point P
-      Triangle T = Triangle({segment.p1, segment.p2, P});
-      app.triangles.push_back(T);
+      app.triangles.push_back(Triangle({segment.p1, segment.p2, point}));
     }
   }
 }
